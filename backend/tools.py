@@ -120,41 +120,28 @@ def evaluate_working(
     if question is None:
         return {"status": "error", "message": "Question not found."}
 
-    mark_scheme: str = question.get("mark_scheme", "")
+    mark_scheme_data: dict = question.get("mark_scheme", {})
     total_marks: int = question.get("total_marks", 0)
 
-    # ------------------------------------------------------------------
-    # TODO: Implement the core grading algorithm.
-    #
-    # Approach outline:
-    #   1. Parse `student_working` into discrete steps.
-    #   2. Compare each step against the mark-scheme rubric using
-    #      Gemini (or a custom heuristic for arithmetic checks).
-    #   3. Award marks per step:
-    #        M marks – method marks (correct approach)
-    #        A marks – accuracy marks (correct numerical result)
-    #        B marks – independent marks
-    #   4. Sum awarded marks and determine pass/fail threshold
-    #      (typically ≥ 50 % of total_marks).
-    # ------------------------------------------------------------------
+    # ── Call the real grading engine ──
+    from grader import grade_student_working
 
-    # Placeholder response — replace with real grading logic
-    awarded_marks = 0
-    passed = awarded_marks >= (total_marks * 0.5)
+    grading = grade_student_working(
+        student_working=student_working,
+        mark_scheme=mark_scheme_data,
+        total_marks=total_marks,
+    )
 
     return {
         "status": "ok",
         "question_id": question_id,
         "student_id": student_id,
         "total_marks": total_marks,
-        "awarded_marks": awarded_marks,
-        "percentage": round((awarded_marks / total_marks * 100), 1) if total_marks else 0,
-        "passed": passed,
-        "step_feedback": [
-            # Each entry will look like:
-            # {"step": 1, "content": "...", "marks_awarded": 1, "max": 2, "note": "..."}
-        ],
-        "overall_feedback": "Grading logic not yet implemented.",
+        "awarded_marks": grading["awarded_marks"],
+        "percentage": grading["percentage"],
+        "passed": grading["passed"],
+        "step_feedback": grading["step_feedback"],
+        "overall_feedback": grading["overall_feedback"],
     }
 
 
@@ -248,9 +235,35 @@ def update_student_profile(
     passes = topic_stats.get("pass", 0)
     mastery = round(passes / attempts, 2) if attempts > 0 else 0.0
 
+    # ── Update mastery ──
     profiles.update_one(
         {"student_id": student_id},
         {"$set": {f"weakness_map.{subject}.{topic}.mastery": mastery}},
+    )
+
+    # ── Update streak (consecutive passes, resets on fail) ──
+    if passed:
+        profiles.update_one(
+            {"student_id": student_id},
+            {"$inc": {f"weakness_map.{subject}.{topic}.streak": 1}},
+        )
+    else:
+        profiles.update_one(
+            {"student_id": student_id},
+            {"$set": {f"weakness_map.{subject}.{topic}.streak": 0}},
+        )
+
+    # ── Update avg_score_pct and last_attempt ──
+    score_pct = round(score / max_score, 4) if max_score > 0 else 0
+    old_avg = topic_stats.get("avg_score_pct", 0.0)
+    new_avg = old_avg + (score_pct - old_avg) / attempts if attempts > 0 else score_pct
+
+    profiles.update_one(
+        {"student_id": student_id},
+        {"$set": {
+            f"weakness_map.{subject}.{topic}.avg_score_pct": round(new_avg, 4),
+            f"weakness_map.{subject}.{topic}.last_attempt": now,
+        }},
     )
 
     return {
@@ -263,6 +276,8 @@ def update_student_profile(
             "pass": passes,
             "fail": topic_stats.get("fail", 0),
             "mastery": mastery,
+            "streak": topic_stats.get("streak", 0),
+            "avg_score_pct": round(new_avg, 4),
         },
         "upserted": result.upserted_id is not None,
     }
