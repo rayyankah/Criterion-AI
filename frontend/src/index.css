@@ -87,3 +87,61 @@
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
   30%           { opacity: 1;   transform: translateY(-4px); }
 }
+
+/* ── TASK 5: Gradient Background Orbs ──────────────────── */
+
+@keyframes float-1 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25%      { transform: translate(10%, -15%) scale(1.1); }
+  50%      { transform: translate(-5%, 10%) scale(0.95); }
+  75%      { transform: translate(-10%, -5%) scale(1.05); }
+}
+
+@keyframes float-2 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25%      { transform: translate(-15%, 10%) scale(1.05); }
+  50%      { transform: translate(10%, -10%) scale(1.1); }
+  75%      { transform: translate(5%, 15%) scale(0.9); }
+}
+
+@keyframes float-3 {
+  0%, 100% { transform: translate(0%, 0%) scale(1); }
+  25%      { transform: translate(8%, 12%) scale(0.95); }
+  50%      { transform: translate(-12%, -8%) scale(1.1); }
+  75%      { transform: translate(15%, -12%) scale(1.05); }
+}
+
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+  will-change: transform;
+}
+
+.gradient-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--color-primary) 0%, transparent 70%);
+  top: -10%;
+  right: -5%;
+  animation: float-1 25s ease-in-out infinite;
+}
+
+.gradient-orb-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--color-accent) 0%, transparent 70%);
+  bottom: -10%;
+  left: -5%;
+  animation: float-2 30s ease-in-out infinite;
+}
+
+.gradient-orb-3 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--color-primary-light) 0%, transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation: float-3 20s ease-in-out infinite;
+}

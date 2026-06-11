@@ -325,10 +325,10 @@ def seed():
     collection.delete_many({})
 
     result = collection.insert_many(SEED_QUESTIONS)
-    print(f"✅  Seeded {len(result.inserted_ids)} questions into the database.")
+    print(f"[OK] Seeded {len(result.inserted_ids)} questions into the database.")
     for i, doc_id in enumerate(result.inserted_ids):
         q = SEED_QUESTIONS[i]
-        print(f"   {doc_id} — {q['subject']} / {q['topic']} ({q['level']}-Level)")
+        print(f"   {doc_id} - {q['subject']} / {q['topic']} ({q['level']}-Level)")
 
 
 if __name__ == "__main__":

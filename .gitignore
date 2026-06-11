@@ -1,54 +1,41 @@
-# ═══════════════════════════════════════════════════════════════
-# Criterion AI — Root .gitignore
-# ═══════════════════════════════════════════════════════════════
-
-# ── Environment & Secrets ─────────────────────────────────────
-.env
-.env.*
-!.env.example
-
-# ── Python ────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyo
-*.pyd
-.Python
-venv/
-.venv/
-env/
-ENV/
+*.so
 *.egg-info/
 dist/
 build/
+venv/
+.venv/
 *.egg
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-htmlcov/
-.coverage
-*.log
 
-# ── Node / Frontend ──────────────────────────────────────────
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
-frontend/dist/
-frontend/build/
+dist/
 *.tsbuildinfo
 
-# ── IDE / Editor ─────────────────────────────────────────────
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# ── OS ───────────────────────────────────────────────────────
-.DS_Store
-Desktop.ini
+# Logs
+*.log
+npm-debug.log*
+
+# Guide files (not needed in prod)
+Hackathon_Master_Plan.txt
+Rayyan_Python_Masterclass.txt

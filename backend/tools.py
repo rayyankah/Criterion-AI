@@ -1,7 +1,7 @@
 """
 tools.py — MCP Tool definitions for Criterion AI.
 
-Exposes three tools via the Model Context Protocol that Gemini can invoke:
+Exposes three tools via the Model Context Protocol that can be invoked:
   1. fetch_question     – retrieve past-paper questions by syllabus / topic
   2. evaluate_working   – auto-grade step-by-step mathematical working
   3. update_student_profile – persist pass/fail state for adaptive tracking
@@ -12,6 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from database import (
     get_questions_collection,
     get_student_profiles_collection,
+    is_using_memory,
 )
 
 # ---------------------------------------------------------------------------
@@ -56,36 +57,70 @@ def fetch_question(
     """
     collection = get_questions_collection()
 
-    # Build dynamic query
-    query: dict[str, Any] = {
-        "subject": {"$regex": f"^{subject}$", "$options": "i"},
-        "level": level.upper(),
-    }
-    if topic:
-        query["topic"] = {"$regex": f"^{topic}$", "$options": "i"}
-    if year:
-        query["year"] = year
-    if session:
-        query["session"] = {"$regex": session, "$options": "i"}
-    if difficulty:
-        query["difficulty"] = difficulty.lower()
+    if is_using_memory():
+        # In-memory: use simple case-insensitive matching
+        query: dict[str, Any] = {}
+        # We'll filter manually after fetching all docs
+        all_docs = collection.find({})
+        matches = []
+        for doc in all_docs:
+            # Subject match (case-insensitive)
+            if doc.get("subject", "").lower() != subject.lower():
+                continue
+            # Level match
+            if doc.get("level", "").upper() != level.upper():
+                continue
+            # Optional filters
+            if topic and doc.get("topic", "").lower() != topic.lower():
+                continue
+            if year and doc.get("year") != year:
+                continue
+            if session and session.lower() not in doc.get("session", "").lower():
+                continue
+            if difficulty and doc.get("difficulty", "").lower() != difficulty.lower():
+                continue
+            matches.append(doc)
 
-    # TODO: Replace with smarter sampling (weighted by weakness) once
-    #       the adaptive engine is wired up.
-    doc = collection.find_one(query)
+        if not matches:
+            return {
+                "status": "not_found",
+                "message": (
+                    f"No question found for {subject} ({level}) "
+                    f"with the given filters."
+                ),
+            }
 
-    if doc is None:
-        return {
-            "status": "not_found",
-            "message": (
-                f"No question found for {subject} ({level}) "
-                f"with the given filters."
-            ),
+        doc = matches[0]
+        doc["_id"] = str(doc["_id"])
+        return {"status": "ok", "question": doc}
+    else:
+        # MongoDB: use regex queries
+        query = {
+            "subject": {"$regex": f"^{subject}$", "$options": "i"},
+            "level": level.upper(),
         }
+        if topic:
+            query["topic"] = {"$regex": f"^{topic}$", "$options": "i"}
+        if year:
+            query["year"] = year
+        if session:
+            query["session"] = {"$regex": session, "$options": "i"}
+        if difficulty:
+            query["difficulty"] = difficulty.lower()
 
-    # Serialise ObjectId for JSON transport
-    doc["_id"] = str(doc["_id"])
-    return {"status": "ok", "question": doc}
+        doc = collection.find_one(query)
+
+        if doc is None:
+            return {
+                "status": "not_found",
+                "message": (
+                    f"No question found for {subject} ({level}) "
+                    f"with the given filters."
+                ),
+            }
+
+        doc["_id"] = str(doc["_id"])
+        return {"status": "ok", "question": doc}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -112,10 +147,18 @@ def evaluate_working(
         A grading report with score, max marks, per-step feedback, and
         whether the attempt is considered a pass.
     """
-    from bson import ObjectId
-
     questions = get_questions_collection()
-    question = questions.find_one({"_id": ObjectId(question_id)})
+
+    if is_using_memory():
+        # In-memory: _id is a plain string
+        question = questions.find_one({"_id": question_id})
+    else:
+        # MongoDB: convert to ObjectId
+        from bson import ObjectId
+        try:
+            question = questions.find_one({"_id": ObjectId(question_id)})
+        except Exception:
+            question = questions.find_one({"_id": question_id})
 
     if question is None:
         return {"status": "error", "message": "Question not found."}
