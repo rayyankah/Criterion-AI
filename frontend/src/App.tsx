@@ -8,6 +8,10 @@ interface Message {
   timestamp: Date
 }
 
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? ''
+  : 'https://criterion-ai-backend.onrender.com'
+
 function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'bank' | 'progress' | 'settings'>('chat')
   const [studentId, setStudentId] = useState('demo_student')
@@ -37,7 +41,7 @@ function App() {
   const fetchProfile = async () => {
     setIsProfileLoading(true)
     try {
-      const response = await fetch(`/api/student-profile/${studentId}`)
+      const response = await fetch(`${BACKEND_URL}/api/student-profile/${studentId}`)
       if (response.ok) {
         const data = await response.json()
         setStudentProfile(data)
@@ -90,7 +94,7 @@ function App() {
     setHasUserSent(true)
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${BACKEND_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
