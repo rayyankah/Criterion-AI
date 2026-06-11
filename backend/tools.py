@@ -235,8 +235,6 @@ def update_student_profile(
                 "name": "",
                 "level": "",
                 "subjects": [],
-                "weakness_map": {},
-                "exam_history": [],
                 "created_at": now,
             },
             "$set": {
