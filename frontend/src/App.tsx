@@ -8,9 +8,7 @@ interface Message {
   timestamp: Date
 }
 
-const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? ''
-  : 'https://criterion-ai-backend.onrender.com'
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://criterion-ai-backend.onrender.com'
 
 function App() {
   const [activeTab, setActiveTab] = useState<'chat' | 'bank' | 'progress' | 'settings'>('chat')
@@ -124,7 +122,7 @@ function App() {
         role: 'assistant',
         content:
           `⚠️ **Connection Error**\n\n` +
-          `Could not reach the backend server. Please make sure the FastAPI server is running on port 8000.\n\n` +
+          `Could not reach the backend server at ${BACKEND_URL}. (If it's hosted on Render's free tier, it might take ~50s to wake up).\n\n` +
           `\`Error: ${errorMsg}\``,
         timestamp: new Date(),
       }
@@ -746,8 +744,8 @@ function App() {
                   <span className="font-mono font-bold text-primary-light">In-Memory (Auto Fallback)</span>
                 </div>
                 <div className="flex justify-between p-3 rounded-xl bg-surface-lighter/50 border border-border/40">
-                  <span className="text-text-secondary">FastAPI Host/Port</span>
-                  <span className="font-mono text-text-primary">localhost:8000</span>
+                  <span className="text-text-secondary">FastAPI Backend</span>
+                  <span className="font-mono text-text-primary text-xs">{BACKEND_URL || 'Localhost (Proxy)'}</span>
                 </div>
                 <div className="flex justify-between p-3 rounded-xl bg-surface-lighter/50 border border-border/40">
                   <span className="text-text-secondary">Model Context Protocol</span>
