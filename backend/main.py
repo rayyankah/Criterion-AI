@@ -237,6 +237,9 @@ def _is_working_submission(msg: str) -> bool:
         r'\d+\s*m/s',       # units
         r'factoris',        # factorisation
         r'\(\d+x',          # brackets with x
+        r'answer',          # explicit answer keyword
+        r'ans',             # short answer keyword
+        r'^\s*\d+(\.\d+)?\s*$', # just a number
     ]
     for pattern in indicators:
         if re.search(pattern, msg, re.IGNORECASE):
