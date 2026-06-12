@@ -90,7 +90,8 @@ def fetch_question(
                 ),
             }
 
-        doc = matches[0]
+        import random
+        doc = random.choice(matches)
         doc["_id"] = str(doc["_id"])
         return {"status": "ok", "question": doc}
     else:
@@ -108,9 +109,13 @@ def fetch_question(
         if difficulty:
             query["difficulty"] = difficulty.lower()
 
-        doc = collection.find_one(query)
+        pipeline = [
+            {"$match": query},
+            {"$sample": {"size": 1}}
+        ]
+        docs = list(collection.aggregate(pipeline))
 
-        if doc is None:
+        if not docs:
             return {
                 "status": "not_found",
                 "message": (
@@ -119,6 +124,7 @@ def fetch_question(
                 ),
             }
 
+        doc = docs[0]
         doc["_id"] = str(doc["_id"])
         return {"status": "ok", "question": doc}
 
