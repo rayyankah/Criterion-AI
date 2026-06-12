@@ -405,8 +405,60 @@ async def api_chat(req: ChatRequest):
     level = _detect_level(msg) or session.get("current_level") or "O"
     difficulty = _detect_difficulty(msg)
 
-    # ── INTENT 1: Asking for a question ──
-    if _wants_question(msg):
+    is_answering = _is_working_submission(msg) and bool(session.get("current_question_id"))
+    is_asking_question = _wants_question(msg)
+
+    explicit_skip = any(kw in msg.lower() for kw in ["new question", "next question", "another question", "different", "skip"])
+    if explicit_skip:
+        is_answering = False
+        is_asking_question = True
+
+    # ── INTENT 1: Submitting working / answer ──
+    if is_answering:
+        question_id = session["current_question_id"]
+        current_question = session.get("current_question", {})
+
+        # Grade the working
+        grading = evaluate_working(
+            question_id=question_id,
+            student_id=student_id,
+            student_working=msg,
+        )
+
+        if grading.get("status") == "error":
+            return ChatResponse(
+                reply=f"⚠️ {grading.get('message', 'Could not grade your working.')}",
+                data=grading,
+                action="error",
+            )
+
+        # Auto-update student profile
+        profile_update = update_student_profile(
+            student_id=student_id,
+            subject=session.get("current_subject", ""),
+            topic=session.get("current_topic", ""),
+            question_id=question_id,
+            score=grading["awarded_marks"],
+            max_score=grading["total_marks"],
+            passed=grading["passed"],
+            feedback=grading["overall_feedback"],
+        )
+
+        # Clear current question from session
+        session["current_question"] = None
+        session["current_question_id"] = None
+
+        return ChatResponse(
+            reply=_format_grading(grading),
+            data={
+                "grading": grading,
+                "profile_update": profile_update,
+            },
+            action="graded",
+        )
+
+    # ── INTENT 2: Asking for a question ──
+    if is_asking_question:
         if not subject:
             return ChatResponse(
                 reply=(
@@ -460,49 +512,6 @@ async def api_chat(req: ChatRequest):
             action="question_fetched",
         )
 
-    # ── INTENT 2: Submitting working / answer ──
-    if _is_working_submission(msg) and session.get("current_question_id"):
-        question_id = session["current_question_id"]
-        current_question = session.get("current_question", {})
-
-        # Grade the working
-        grading = evaluate_working(
-            question_id=question_id,
-            student_id=student_id,
-            student_working=msg,
-        )
-
-        if grading.get("status") == "error":
-            return ChatResponse(
-                reply=f"⚠️ {grading.get('message', 'Could not grade your working.')}",
-                data=grading,
-                action="error",
-            )
-
-        # Auto-update student profile
-        profile_update = update_student_profile(
-            student_id=student_id,
-            subject=session.get("current_subject", ""),
-            topic=session.get("current_topic", ""),
-            question_id=question_id,
-            score=grading["awarded_marks"],
-            max_score=grading["total_marks"],
-            passed=grading["passed"],
-            feedback=grading["overall_feedback"],
-        )
-
-        # Clear current question from session
-        session["current_question"] = None
-        session["current_question_id"] = None
-
-        return ChatResponse(
-            reply=_format_grading(grading),
-            data={
-                "grading": grading,
-                "profile_update": profile_update,
-            },
-            action="graded",
-        )
 
     # ── INTENT 3: Progress / weakness query ──
     if _wants_progress(msg):
